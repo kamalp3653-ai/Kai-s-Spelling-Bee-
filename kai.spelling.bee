@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spelling Bee: Word Champion</title>
+<style>
+:root{--bg:#101522;--panel:#1a2233;--panel2:#232e43;--text:#f5f7fb;--muted:#b8c3d8;--accent:#facc15;--good:#4ade80;--bad:#fb7185}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at top,#253252 0,#101522 52%);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;min-height:100vh}
+main{width:min(1050px,94vw);margin:0 auto;padding:28px 0 48px}
+header{text-align:center;margin-bottom:22px}
+h1{font-size:clamp(2rem,5vw,3.5rem);line-height:1.05;margin:0 0 8px;letter-spacing:-1.5px}
+header p{margin:0;color:var(--muted)}
+.panel{background:rgba(26,34,51,.96);border:1px solid #34415b;border-radius:20px;padding:22px;box-shadow:0 14px 40px #0003;margin-bottom:18px}
+h2{margin:0 0 7px;font-size:1.35rem}
+.small{color:var(--muted);font-size:.92rem;line-height:1.5}
+.mode-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:17px}
+.mode{color:#fff;border:0;border-radius:14px;padding:15px;text-align:left;cursor:pointer;min-height:100px;box-shadow:inset 0 -4px #0002;transition:transform .12s,filter .12s;font:inherit}
+.mode:hover{transform:translateY(-2px);filter:brightness(1.08)}
+.mode:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid white;outline-offset:3px}
+.mode strong{display:block;font-size:1.08rem;margin-bottom:5px}
+.mode span{display:block;font-size:.84rem;line-height:1.35}
+.beginner{background:#22a447}.novice{background:#76a817}.moderate{background:#b88b00}.advanced{background:#d65d0b}.expert{background:#d73545}.genius{background:#8b45c7}.master{background:#514dc4}.randomiser{background:#078ba9}.learn{background:#0e9b85}.charg{background:#d93688}
+.hidden{display:none!important}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}
+.stat{background:var(--panel2);border-radius:12px;padding:12px;text-align:center}
+.stat label{display:block;color:var(--muted);font-size:.78rem}
+.stat strong{font-size:1.4rem}
+.game-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pill{background:#303c53;color:#e8eefc;border-radius:999px;padding:7px 12px;font-size:.85rem}
+.controls{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+.action{border:0;border-radius:10px;padding:11px 14px;cursor:pointer;font:inherit;font-weight:700}
+.primary{background:var(--accent);color:#171717}
+.secondary{background:#34415b;color:#fff}
+.danger{background:#a72c45;color:#fff}
+.action:disabled{opacity:.5;cursor:not-allowed}
+input{width:100%;padding:14px;border-radius:10px;border:1px solid #52617c;background:#101522;color:white;font:inherit;font-size:1rem;margin-top:7px}
+.feedback{min-height:28px;margin-top:14px;font-weight:700}
+.good{color:var(--good)}.bad{color:var(--bad)}
+.learn-box{margin-top:18px;padding:16px;border-radius:12px;background:#111a2a;border:1px solid #34415b}
+.syllables{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.syllable{padding:10px 12px;border-radius:9px;background:#303c53;font-weight:700}
+.footer-note{color:var(--muted);font-size:.9rem}
+@media(max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}.panel{padding:16px}.controls .action{flex:1 1 auto}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>🐝 Spelling Bee</h1>
+<p>Train your spelling. Build your streak. Become the champion.</p>
+</header>
+
+<section class="panel" id="menu">
+<h2>Choose your difficulty</h2>
+<p class="small">Pick a mode and see how many words you can spell correctly!</p>
+<div class="mode-grid" id="modeGrid"></div>
+</section>
+
+<section class="panel hidden" id="game">
+<div class="game-top">
+<div>
+<h2 id="modeTitle">Beginner</h2>
+<p class="small" id="modeDescription"></p>
+</div>
+<span class="pill" id="roundLabel">Round 0</span>
+</div>
+
+<div class="stats">
+<div class="stat"><label>Score</label><strong id="score">0</strong></div>
+<div class="stat"><label>Streak</label><strong id="streak">0</strong></div>
+<div class="stat"><label>Strikes</label><strong id="strikes">0 / 3</strong></div>
+<div class="stat"><label>High score</label><strong id="highScore">0</strong></div>
+</div>
+
+<div class="learn-box" id="wordPanel">
+<p class="small" id="prompt">Listen to the word, then type its spelling.</p>
+<h2 id="wordStatus">🔊 Ready?</h2>
+<button class="action secondary" id="speakBtn" type="button">🔊 Hear word again</button>
+</div>
+
+<form id="answerForm">
+<label class="small" for="answer">Type the spelling</label>
+<input id="answer" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type the word here…" required>
+<div class="controls">
+<button class="action primary" type="submit" id="submitBtn">Submit spelling</button>
+<button class="action secondary" type="button" id="hintBtn">Get a hint</button>
+<button class="action secondary" type="button" id="nextBtn">Next word</button>
+<button class="action danger" type="button" id="menuBtn">Back to modes</button>
+</div>
+</form>
+
+<div class="feedback" id="feedback" aria-live="polite"></div>
+
+<div class="learn-box hidden" id="learnBox">
+<strong>Learn it syllable by syllable</strong>
+<p class="small" id="learnInstructions">Listen and practice each chunk.</p>
+<div class="syllables" id="syllables"></div>
+<div class="controls">
+<button class="action secondary" id="prevSyllable" type="button">Previous chunk</button>
+<button class="action primary" id="hearSyllable" type="button">Hear current chunk</button>
+<button class="action secondary" id="nextSyllable" type="button">Next chunk</button>
+</div>
+</div>
+<p class="footer-note" id="endNote"></p>
+</section>
+</main>
+
+<script>
+const CHARG = "Chargoggagoggmanchauggagoggchaubunagungamaugg";
+
+const modes = [
+{name:"Beginner",cls:"beginner",desc:"Friendly everyday words to get started."},
+{name:"Novice",cls:"novice",desc:"A little trickier, but you’ve got this."},
+{name:"Moderate",cls:"moderate",desc:"Watch those silent letters and tricky vowels."},
+{name:"Advanced",cls:"advanced",desc:"Longer words and tougher spelling patterns."},
+{name:"Expert",cls:"expert",desc:"Challenging vocabulary for serious spellers."},
+{name:"Genius",cls:"genius",desc:"Rare words that test your word knowledge."},
+{name:"Master",cls:"master",desc:"A big collection of difficult dictionary words."},
+{name:"Randomiser",cls:"randomiser",desc:"A surprise word from any difficulty level."},
+{name:"Learn",cls:"learn",desc:"Learn long words in chunks, syllable by syllable."},
+{name:"Charg",cls:"charg",desc:"Chargoggagoggmanchauggagoggchaubunagungamaugg on repeat 🔥🔥🔥"}
+];
+
+const banks = {
+Beginner:"apple|banana|orange|pencil|window|garden|rabbit|monkey|sunshine|rainbow|purple|yellow|school|teacher|friend|family|computer|keyboard|football|basketball|chicken|dolphin|elephant|giraffe|mountain|ocean|planet|rocket|bicycle|library|picture|sandwich|chocolate|umbrella|holiday|birthday|morning|evening|blanket|pillow".split("|"),
+Novice:"beautiful|different|favorite|calendar|library|February|Wednesday|tomorrow|surprise|straight|believe|remember|probably|separate|sentence|question|exercise|knowledge|adventure|dangerous|medicine|electric|language|triangle|vegetable|restaurant|excellent|necessary|mischievous|mystery|ordinary|occasion|business|strength|whisper|journey|imagine|attention|discover|comfortable".split("|"),
+Moderate:"accommodate|achievement|appearance|argument|athlete|beginning|cemetery|conscience|conscious|definitely|embarrass|environment|existence|foreign|government|guarantee|independent|interrupt|maintenance|privilege|recommend|restaurant|rhythm|sincerely|temperature|twelfth|vacuum|weird|occasionally|perseverance|pronunciation|questionnaire|exaggerate|immediately|millennium|parallel|relevant|successful|thorough|tournament".split("|"),
+Advanced:"aberration|belligerent|capricious|conscientious|deleterious|idiosyncrasy|inconspicuous|indispensable|juxtaposition|labyrinthine|magnanimous|onomatopoeia|perpendicular|philanthropy|quintessential|reminiscence|surreptitious|unprecedented|vicissitude|acquiescence|circumstantial|disproportionate|entrepreneur|hierarchical|infrastructure|inoculate|liaison|metamorphosis|parliamentary|reconnaissance|subterranean|superfluous|susceptible|ubiquitous|vociferous|antithesis|bureaucracy|conundrum|ephemeral|hypocrisy".split("|"),
+Expert:"antidisestablishmentarianism|floccinaucinihilipilification|pneumonoultramicroscopicsilicovolcanoconiosis|pseudopseudohypoparathyroidism|hippopotomonstrosesquippedaliophobia|incomprehensibility|uncharacteristically|disproportionableness|otorhinolaryngological|electroencephalography|intersubjectivity|counterrevolutionaries|institutionalization|indistinguishability|compartmentalization|unconstitutionality|deinstitutionalization|psychopharmacological|spectrophotometrically|thyroparathyroidectomy".split("|"),
+Genius:"antidisestablishmentarianism|floccinaucinihilipilification|pneumonoultramicroscopicsilicovolcanoconiosis|pseudopseudohypoparathyroidism|hippopotomonstrosesquippedaliophobia|incomprehensibility|uncharacteristically|disproportionableness|otorhinolaryngological|electroencephalography|intersubjectivity|counterrevolutionaries|institutionalization|indistinguishability|compartmentalization|unconstitutionality|deinstitutionalization|psychopharmacological|spectrophotometrically|thyroparathyroidectomy".split("|"),
+Master:"Acetylglucocoroglaucigenin|Acrocephalopolydactylousdysplasia|Antidisestablishmentarianism|Canaliculodacryocystorhinostomy|Cholangiocholecystocholedochectomy|Chondromyxohemangioendotheliosarcoma|Counterimmunoelectrophoresis|Dermatofibrosarcomaprotuberans|Dimethyldioctadecylammoniumchloride|Encephalocraniocutaneouslipomatosis|Floccinaucinihilipilification|Fructosebisphosphatetriosephosphatelyase|Haematospectrophotometrically|Hexakosioihexekontahexaphobia|Hippopotomonstrosesquippedaliophobia|Immunoelectrochemiluminescence|Laparohysterosalpingooophorectomy|Lymphangioleiomyomatosis|Neohesperidindihydrochalcone|Nonanonacontanonactanonaliag".split("|")
+};
+
+let selectedMode="Beginner";
+let currentWord="";
+let score=0;
+let streak=0;
+let strikes=0;
+let round=0;
+let usedWords=[];
+let hintUsed=false;
+let gameOver=false;
+let practice=false;
+let randomDifficulty="Beginner";
+let syllableParts=[];
+let syllableIndex=0;
+
+const $ = id => document.getElementById(id);
+
+function playTone(frequency,duration,type="sine"){
+try{
+const context=new (window.AudioContext||window.webkitAudioContext)();
+const oscillator=context.createOscillator();
+const gain=context.createGain();
+oscillator.type=type;
+oscillator.frequency.value=frequency;
+gain.gain.value=.07;
+oscillator.connect(gain);
+gain.connect(context.destination);
+oscillator.start();
+gain.gain.exponentialRampToValueAtTime(.001,context.currentTime+duration);
+oscillator.stop(context.currentTime+duration);
+}catch(e){}
+}
+
+function speak(word){
+if(!("speechSynthesis" in window))return;
+speechSynthesis.cancel();
+const utterance=new SpeechSynthesisUtterance(word);
+utterance.rate=.88;
+utterance.pitch=1;
+utterance.lang="en-US";
+speechSynthesis.speak(utterance);
+}
+
+function getHigh(mode){
+return Number(localStorage.getItem("spellingBeeHigh_"+mode)||0);
+}
+
+function saveHigh(){
+if(score>getHigh(selectedMode)){
+localStorage.setItem("spellingBeeHigh_"+selectedMode,String(score));
+}
+}
+
+function buildMenu(){
+const grid=$("modeGrid");
+grid.innerHTML="";
+modes.forEach(mode=>{
+const button=document.createElement("button");
+button.className="mode "+mode.cls;
+button.innerHTML=`<strong>${mode.name}</strong><span>${mode.desc}</span>`;
+button.type="button";
+button.addEventListener("click",()=>startGame(mode.name));
+grid.appendChild(button);
+});
+}
+
+function chooseWord(){
+if(selectedMode==="Charg")return CHARG;
+
+if(selectedMode==="Learn"){
+const learnWords=[
+"Antidisestablishmentarianism",
+"Floccinaucinihilipilification",
+"Hippopotomonstrosesquippedaliophobia",
+"Pneumonoultramicroscopicsilicovolcanoconiosis",
+"Chargoggagoggmanchauggagoggchaubunagungamaugg",
+"Acrocephalopolydactylousdysplasia",
+"Canaliculodacryocystorhinostomy",
+"Supercalifragilisticexpialidocious",
+"Zoanthroprosopometamorphopsia"
+];
+return learnWords[Math.floor(Math.random()*learnWords.length)];
+}
+
+let bank;
+if(selectedMode==="Randomiser"){
+const names=["Beginner","Novice","Moderate","Advanced","Expert","Genius","Master"];
+randomDifficulty=names[Math.floor(Math.random()*names.length)];
+bank=banks[randomDifficulty];
+}else{
+bank=banks[selectedMode]||banks.Beginner;
+}
+
+let available=bank.filter(word=>!usedWords.includes(word.toLowerCase()));
+if(!available.length){
+usedWords=[];
+available=bank.slice();
+}
+
+const word=available[Math.floor(Math.random()*available.length)];
+usedWords.push(word.toLowerCase());
+return word;
+}
+
+function startGame(mode){
+selectedMode=mode;
+score=0;
+streak=0;
+strikes=0;
+round=0;
+usedWords=[];
+gameOver=false;
+practice=false;
+
+$("menu").classList.add("hidden");
+$("game").classList.remove("hidden");
+$("modeTitle").textContent=mode==="Randomiser"?"Randomiser":mode;
+$("modeDescription").textContent=modes.find(item=>item.name===mode).desc;
+$("learnBox").classList.toggle("hidden",mode!=="Learn");
+$("endNote").textContent="";
+$("nextBtn").textContent="Next word";
+updateStats();
+nextWord();
+}
+
+function updateStats(){
+$("score").textContent=score;
+$("streak").textContent=streak;
+$("strikes").textContent=practice?`${strikes} / ∞`:`${strikes} / 3`;
+$("highScore").textContent=getHigh(selectedMode);
+$("roundLabel").textContent="Round "+round;
+}
+
+function setFeedback(message,good){
+$("feedback").textContent=message;
+$("feedback").className="feedback "+(good?"good":"bad");
+}
+
+function nextWord(){
+if(gameOver){
+startGame(selectedMode);
+return;
+}
+
+currentWord=chooseWord();
+round++;
+hintUsed=false;
+
+$("answer").value="";
+$("answer").disabled=false;
+$("submitBtn").disabled=false;
+$("hintBtn").disabled=false;
+$("nextBtn").disabled=false;
+$("wordStatus").textContent="🔊 Listen and spell";
+$("prompt").textContent=selectedMode==="Learn"
+?"Learn the word in chunks, then spell the whole word."
+:"Listen to the word, then type its spelling.";
+$("feedback").textContent="";
+$("feedback").className="feedback";
+$("endNote").textContent="";
+
+if(selectedMode==="Learn"){
+syllableParts=splitSyllables(currentWord);
+syllableIndex=0;
+renderSyllables();
+}else{
+$("syllables").innerHTML="";
+}
+
+updateStats();
+setTimeout(()=>{if(!gameOver)speak(currentWord)},250);
+$("answer").focus();
+}
+
+function normalize(value){
+return value.trim().toLocaleLowerCase().replace(/[\s'-]/g,"");
+}
+
+function submitAnswer(event){
+event.preventDefault();
+if(gameOver)return;
+
+const answer=$("answer").value;
+if(!answer.trim()){
+setFeedback("Type your spelling first!",false);
+return;
+}
+
+if(normalize(answer)===normalize(currentWord)){
+const points=Math.max(10,currentWord.length*2)+(streak>=2?streak*3:0)+(hintUsed?0:5);
+score+=points;
+streak++;
+saveHigh();
+playTone(850,.12);
+setFeedback(`Correct! +${points} points${streak>=3?" — "+streak+" word streak!":""}`,true);
+$("wordStatus").textContent="Correct!";
+updateStats();
+$("answer").disabled=true;
+$("submitBtn").disabled=true;
+$("hintBtn").disabled=true;
+$("endNote").textContent="The word was: "+currentWord;
+}else{
+streak=0;
+playTone(180,.18,"triangle");
+if(!practice){
+strikes++;
+setFeedback(`Not quite. The correct spelling is ${currentWord}.`,false);
+}else{
+setFeedback(`Not quite — practice mode has no strikes. Correct spelling: ${currentWord}.`,false);
+}
+$("wordStatus").textContent="Try the next word";
+updateStats();
+$("answer").disabled=true;
+$("submitBtn").disabled=true;
+$("endNote").textContent="Correct spelling: "+currentWord;
+
+if(!practice&&strikes>=3){
+gameOver=true;
+saveHigh();
+$("endNote").textContent=`GAME OVER! Final score: ${score}. The word was ${currentWord}.`;
+$("nextBtn").textContent="Play again";
+$("nextBtn").disabled=false;
+setFeedback("Three strikes! Game over.",false);
+$("answer").disabled=true;
+$("hintBtn").disabled=true;
+}
+}
+}
+
+function hint(){
+if(gameOver)return;
+hintUsed=true;
+
+if(selectedMode==="Learn"){
+setFeedback("Hint: practice the highlighted chunks below, one at a time.",true);
+return;
+}
+
+const word=currentWord;
+const hintText=`Hint: ${word.length} letters. It starts with "${word.slice(0,Math.min(2,word.length))}" and ends with "${word.slice(-1)}".`;
+setFeedback(hintText,true);
+playTone(500,.08);
+}
+
+function splitSyllables(word){
+if(word===CHARG){
+return ["Char","gog","ga","gog","man","chau","gga","gog","g","chaub","u","na","gun","ga","maugg"];
+}
+
+const chunks=word.match(/[^aeiouy]*[aeiouy]+(?:[^aeiouy](?![aeiouy]))?/gi)||[word];
+const output=chunks.flatMap(chunk=>chunk.length>8?chunk.match(/.{1,5}/g):[chunk]).filter(Boolean);
+
+if(output.join("").toLowerCase()!==word.toLowerCase()){
+return word.match(/.{1,4}/g)||[word];
+}
+return output;
+}
+
+function renderSyllables(){
+const holder=$("syllables");
+holder.innerHTML="";
+
+syllableParts.forEach((part,index)=>{
+const span=document.createElement("span");
+span.className="syllable";
+span.textContent=part;
+if(index===syllableIndex)span.style.outline="3px solid #facc15";
+holder.appendChild(span);
+});
+
+$("learnInstructions").textContent=`Chunk ${syllableIndex+1} of ${syllableParts.length}.`;
+}
+
+$("answerForm").addEventListener("submit",submitAnswer);
+$("speakBtn").addEventListener("click",()=>speak(currentWord));
+$("hintBtn").addEventListener("click",hint);
+$("nextBtn").addEventListener("click",nextWord);
+$("menuBtn").addEventListener("click",()=>{
+$("game").classList.add("hidden");
+$("menu").classList.remove("hidden");
+speechSynthesis.cancel();
+});
+
+$("prevSyllable").addEventListener("click",()=>{
+if(!syllableParts.length)return;
+syllableIndex=(syllableIndex-1+syllableParts.length)%syllableParts.length;
+renderSyllables();
+});
+
+$("nextSyllable").addEventListener("click",()=>{
+if(!syllableParts.length)return;
+syllableIndex=(syllableIndex+1)%syllableParts.length;
+renderSyllables();
+});
+
+$("hearSyllable").addEventListener("click",()=>{
+if(syllableParts[syllableIndex])speak(syllableParts[syllableIndex]);
+});
+
+buildMenu();
+</script>
+</body>
+</html>
